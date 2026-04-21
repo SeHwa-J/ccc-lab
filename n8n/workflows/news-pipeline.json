@@ -1,0 +1,858 @@
+{
+  "name": "[CX] SH test",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -240,
+        -16
+      ],
+      "id": "87dd2712-b375-46ee-a6c4-4d522a6318f0",
+      "name": "매일 9시 실행"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nconst allInputs = $input.all();\n\nfor (let i = 0; i < allInputs.length; i++) {\n  try {\n    const text = allInputs[i].json.content[0].text;\n    const jsonMatch = text.match(/\\{[\\s\\S]*?\\}/);\n    if (!jsonMatch) continue;\n\n    const parsed = JSON.parse(jsonMatch[0]);\n\n    const original = $('XML 파싱').all()[i].json;\n\n    items.push({\n      json: {\n        title: original.title,\n        link: original.link,\n        pubDate: original.pubDate,\n        source: original.source,\n        keyword: original.keyword,\n        relevant: parsed.relevant,\n        score: parsed.score,\n        summary: parsed.summary,\n      }\n    });\n  } catch (e) {\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "fee48d32-2eff-45ec-a893-5a035ed81db9",
+      "name": "Claude 응답 파싱"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "de203243-f005-4518-ac2e-1a006e88fcbf",
+              "leftValue": "={{ $json.relevant }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1856,
+        0
+      ],
+      "id": "bf113416-d9d5-4d61-a227-6f5bfee56ca6",
+      "name": "관련 기사 필터"
+    },
+    {
+      "parameters": {
+        "tableId": "articles",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "url",
+              "fieldValue": "={{ $json.link }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            },
+            {
+              "fieldId": "keyword",
+              "fieldValue": "={{ $json.keyword }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.summary }}"
+            },
+            {
+              "fieldId": "score",
+              "fieldValue": "={{ $json.score }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -16
+      ],
+      "id": "92b828b4-2b01-48b5-aea7-95698d828247",
+      "name": "Supabase 저장",
+      "credentials": {
+        "supabaseApi": {
+          "id": "x6h8NpLnqVutxcHV",
+          "name": "CX Lab Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=고객경험+CX&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        -608
+      ],
+      "id": "e482db32-6981-4b90-bc27-7492c5bf70fd",
+      "name": "RSS 고객경험CX",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "numberInputs": 8
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        640,
+        -96
+      ],
+      "id": "f86254da-d2df-4dc5-82f7-252a3a7ec9cb",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=CS+자동화&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        -400
+      ],
+      "id": "350d1504-9d66-43e2-9ed1-9acf5c9f4cce",
+      "name": "RSS CS자동화",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=VOC+분석&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "e6127875-7c5f-498d-a39d-00e7531ef311",
+      "name": "RSS VOC분석",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=CRM+플랫폼&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "eb06d462-781b-441e-a108-b913566b0a5e",
+      "name": "RSS CRM플랫폼",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=고객+데이터+플랫폼&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        160
+      ],
+      "id": "40fbf241-04ad-450c-9d2f-de44d44b5e55",
+      "name": "RSS 고객데이터플랫폼",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=고객+충성도&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        352
+      ],
+      "id": "ba8e1f8e-e90f-41a4-be7f-3c6edd1c23e6",
+      "name": "RSS 고객충성도",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=AI+고객서비스&hl=ko&gl=KR",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        544
+      ],
+      "id": "c3af3bb3-de32-490c-8160-abb2a9316e1b",
+      "name": "RSS AI고객서비스",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=customer+experience+trends&hl=en&gl=US",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        736
+      ],
+      "id": "96ae5127-dd5a-4837-be0a-cef62f95d560",
+      "name": "RSS CXtrends",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\n\nfor (const input of $input.all()) {\n  const xml = input.json.data || '';\n  const keyword = input.json.keyword || '기타';\n\n  const itemMatches = xml.match(/<item>([\\s\\S]*?)<\\/item>/g) || [];\n\n  for (const item of itemMatches.slice(0, 5)) {\n    const title = (item.match(/<title><!\\[CDATA\\[(.*?)\\]\\]><\\/title>/) ||\n                   item.match(/<title>(.*?)<\\/title>/))?.[1] || '';\n    const link  = (item.match(/<link>(.*?)<\\/link>/))?.[1] || '';\n    const pubDate = (item.match(/<pubDate>(.*?)<\\/pubDate>/))?.[1] || '';\n    const source = (item.match(/<source[^>]*>(.*?)<\\/source>/))?.[1] || '';\n\n    if (title) {\n      items.push({ json: { title, link, pubDate, source, keyword } });\n    }\n  }\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "2062c3ed-7b16-4045-8e7a-35a6b5bdfa01",
+      "name": "XML 파싱"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "고객경험 CX",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        -608
+      ],
+      "id": "a31114fc-345a-4c98-9261-4e8e720ac2b5",
+      "name": "Set 고객경험CX"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "CS 자동화",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        -400
+      ],
+      "id": "afb743ab-bb21-4b4e-a14c-0dbd979852b8",
+      "name": "Set CS자동화"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "VOC 분석",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        -208
+      ],
+      "id": "720bbbaf-a86b-4933-a74e-c55b1404aa36",
+      "name": "Set VOC분석"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "CRM 플랫폼",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        -16
+      ],
+      "id": "253b8135-15fa-4d20-be63-d4bb84267a40",
+      "name": "Set CRM플랫폼"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "고객 데이터 플랫폼",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        160
+      ],
+      "id": "d2539f6b-c78b-44af-9384-0b900ffc1d3e",
+      "name": "Set 고객데이터플랫폼"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "고객 충성도",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        352
+      ],
+      "id": "40d613f0-82c5-49ed-943b-eaac7780db15",
+      "name": "Set 고객충성도"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "AI 고객서비스",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        544
+      ],
+      "id": "4b9f6975-29f4-48d7-bf38-8fbc623deb47",
+      "name": "Set AI고객서비스"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e9c312e0-f37d-435f-8a57-d91108f82b8d",
+              "name": "keyword",
+              "value": "customer experience trends",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        736
+      ],
+      "id": "e4353964-8c01-46c9-b950-b632eddeb84d",
+      "name": "Set CXtrends"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_API_KEY_HERE"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 300,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"다음 뉴스 기사가 CX(고객경험), CS(고객서비스), CSM(고객성공), CRM 업무 담당자에게 실무적으로 유용한지 판단해줘.\\n\\n제목: 어도비, CX 엔터프라이즈 공개…고객 경험 오케스트레이션 비전 재정의 - 전자신문\\n출처: 전자신문\\n\\nJSON만 응답 (다른 텍스트 없이):\\n{\\\"relevant\\\": true 또는 false, \\\"score\\\": 1~10, \\\"summary\\\": \\\"한 줄 요약 (50자 이내)\\\"}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1360,
+        0
+      ],
+      "id": "66d549ec-0a6f-4ceb-bf9a-9dfa58f3ee33",
+      "name": "Claude 관련성 판단",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(title) {\n  return title\n    .replace(/\\s*-\\s*.+$/, '')\n    .replace(/[^\\w가-힣]/g, '')\n    .toLowerCase();\n}\n\nfunction getKeywords(title) {\n  const normalized = normalize(title);\n  const chunks = [];\n  for (let i = 0; i < normalized.length - 3; i++) {\n    chunks.push(normalized.substring(i, i + 4));\n  }\n  return new Set(chunks);\n}\n\nfunction similarity(a, b) {\n  const setA = getKeywords(a);\n  const setB = getKeywords(b);\n  if (setA.size === 0 || setB.size === 0) return 0;\n  const intersection = [...setA].filter(x => setB.has(x)).length;\n  const union = new Set([...setA, ...setB]).size;\n  return intersection / union;\n}\n\nconst all = $input.all().map(i => i.json);\nconst unique = [];\n\nfor (const article of all) {\n  let isDuplicate = false;\n  for (const existing of unique) {\n    if (similarity(article.title, existing.title) > 0.5) {\n      isDuplicate = true;\n      break;\n    }\n  }\n  if (!isDuplicate) {\n    unique.push(article);\n  }\n}\n\nreturn unique.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "33b97577-5a16-44bb-a366-fab38ae5ff18",
+      "name": "중복 제거"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "매일 9시 실행": {
+      "main": [
+        [
+          {
+            "node": "RSS 고객경험CX",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS CS자동화",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS VOC분석",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS CRM플랫폼",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS 고객데이터플랫폼",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS 고객충성도",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS AI고객서비스",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS CXtrends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude 응답 파싱": {
+      "main": [
+        [
+          {
+            "node": "관련 기사 필터",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "관련 기사 필터": {
+      "main": [
+        [
+          {
+            "node": "Supabase 저장",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "XML 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS 고객경험CX": {
+      "main": [
+        [
+          {
+            "node": "Set 고객경험CX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS CS자동화": {
+      "main": [
+        [
+          {
+            "node": "Set CS자동화",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS VOC분석": {
+      "main": [
+        [
+          {
+            "node": "Set VOC분석",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS CRM플랫폼": {
+      "main": [
+        [
+          {
+            "node": "Set CRM플랫폼",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS 고객데이터플랫폼": {
+      "main": [
+        [
+          {
+            "node": "Set 고객데이터플랫폼",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS 고객충성도": {
+      "main": [
+        [
+          {
+            "node": "Set 고객충성도",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS AI고객서비스": {
+      "main": [
+        [
+          {
+            "node": "Set AI고객서비스",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS CXtrends": {
+      "main": [
+        [
+          {
+            "node": "Set CXtrends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML 파싱": {
+      "main": [
+        [
+          {
+            "node": "중복 제거",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set 고객경험CX": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set CS자동화": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Set VOC분석": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Set CRM플랫폼": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Set 고객데이터플랫폼": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Set 고객충성도": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Set AI고객서비스": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 6
+          }
+        ]
+      ]
+    },
+    "Set CXtrends": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Claude 관련성 판단": {
+      "main": [
+        [
+          {
+            "node": "Claude 응답 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "중복 제거": {
+      "main": [
+        [
+          {
+            "node": "Claude 관련성 판단",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d87fae29-24b2-4285-a253-4ab04d76207f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43e9c68f08b44ab421f4978a7021d5734c0ca67815e7ee39d8d1291766458a18"
+  },
+  "id": "BUwfXETJZtyt87Hv",
+  "tags": []
+}
