@@ -1,7 +1,7 @@
-[CX_Community_PRD.md](https://github.com/user-attachments/files/26890118/CX_Community_PRD.md)
+[PRD.md](https://github.com/user-attachments/files/26941585/PRD.md)
 # CX Lab — 제품 요구사항 문서 (PRD)
 
-> 버전: v0.1 | 작성일: 2026-04-20 | 상태: 초안
+> 버전: v0.2 | 작성일: 2026-04-20 | 최종 수정: 2026-04-22 | 상태: Phase 1 진행 중
 
 ---
 
@@ -107,57 +107,56 @@ profiles
 
 ---
 
-### Phase 1 — 뉴스 자동 수집 파이프라인
+### Phase 1 — 뉴스 자동 수집 파이프라인 (진행 중)
 
 > 목표: n8n으로 기사를 자동 수집하고 Supabase에 저장한다.
 > 기간 목표: 2~3주
 
 #### 기능 범위
 
-- [ ] n8n Schedule Trigger 설정 (매일 오전 9시)
-- [ ] Google News RSS 8개 키워드 수집
+- [x] n8n Schedule Trigger 설정 (매일 오전 9시)
+- [x] Google News RSS 8개 키워드 수집
   - 고객경험 CX / CS 자동화 / VOC 분석 / CRM 플랫폼
   - 고객 데이터 플랫폼 / 고객 충성도 / AI 고객서비스
   - customer experience trends (영문)
-- [ ] XML 파싱 — 제목·링크·날짜·출처 추출
-- [ ] Claude API 호출 — 관련성 판단(true/false) + 점수(1-10) + 한 줄 요약
-- [ ] Supabase `articles` 테이블에 저장 (`is_published = false` 기본값)
-- [ ] 중복 기사 방지 (URL 기준 upsert)
+- [x] Set 노드 8개로 키워드 태깅 (HTTP Request 응답에 URL 정보 없어 필요)
+- [x] XML 파싱 — 제목·링크·날짜·출처 추출
+- [x] 중복 제거 Code 노드 (제목 유사도 50% 기준, Claude 호출 전 수행)
+- [x] Claude API 호출 — 관련성 판단(true/false) + 점수(1-10) + 한 줄 요약
+- [x] Claude 응답 파싱 노드 (XML 파싱 결과 역참조로 원본 데이터 병합)
+- [x] Supabase `articles` 테이블에 저장 (`is_published = false` 기본값)
+- [ ] 전체 워크플로우 Test 실행 (37개 기사 끝까지)
+- [ ] 스케줄 Active 전환
 
 #### n8n 워크플로우 노드 순서
 
 ```
 Schedule Trigger
   → HTTP Request × 8 (RSS 수집, 병렬)
+  → Set × 8 (keyword 태깅)
   → Merge (Append 모드)
   → Code (XML 파싱)
+  → Code (중복 제거, 유사도 50%)
   → HTTP Request (Claude API 호출)
-  → Code (응답 파싱)
+  → Code (응답 파싱 + 원본 병합)
   → IF (relevant = true)
-    → Supabase (Insert/Upsert)
+    → Supabase (Insert)
     → [종료]
 ```
+
+> 상세 구조는 [n8n-architecture.md](./n8n-architecture.md) 참조.
 
 #### Claude 프롬프트 템플릿
 
 ```
-다음 뉴스 기사가 CX(고객경험), CS(고객서비스), CSM(고객성공),
-CRM 업무 담당자에게 실무적으로 유용한지 판단해줘.
-
-제목: {{title}}
-출처: {{source}}
-
-JSON만 응답 (다른 텍스트 없이):
-{
-  "relevant": true 또는 false,
-  "score": 1~10,
-  "summary": "한 줄 요약 (50자 이내)"
-}
+다음 기사가 CX/CS/CSM/CRM 담당자에게 유용한지 판단해줘.
+제목: {{ $json.title }}
+JSON만 응답: {"relevant": true, "score": 8, "summary": "요약"}
 ```
 
 #### 완료 기준
 
-- 매일 자동 실행 확인
+- 매일 자동 실행 확인 + 스케줄 Active 상태 유지
 - Supabase articles 테이블에 데이터 쌓이는 것 확인
 - 관련 없는 기사(예: 동음이의어 기사)가 필터링되는 것 확인
 
@@ -266,7 +265,9 @@ const { data } = await supabase
 | 보안 | Supabase RLS(Row Level Security) 적용 — 본인 게시글만 수정/삭제 가능 |
 | 성능 | 기사 목록 초기 로딩 2초 이내 목표 |
 | 비용 | Claude Haiku 사용으로 일 40건 기준 월 100원 미만 유지 |
-| 확장성 | 키워드 추가 시 n8n 노드만 복제하면 되는 구조 유지 |
+| 확장성 | 키워드 추가 시 HTTP Request + Set 노드 쌍만 추가하면 되는 구조 유지 |
+| 환경 제약 | 현재 회사 n8n 환경에서 Code 노드의 외부 라이브러리(fetch, axios 등) 사용 불가. 유료 환경 이관 후 최적화 검토 |
+| 보안 (API Key) | n8n 워크플로우 JSON Export 시 API Key는 Credential로 분리 저장 또는 수동 마스킹 필수 |
 
 ---
 
@@ -279,17 +280,32 @@ const { data } = await supabase
 | 도메인/브랜딩 | 서비스명·도메인 미정 | Phase 3 이전 |
 | 뉴스 자동 승인 기준 | 점수 8점 이상 자동 발행 여부 미정 | Phase 2 중 |
 | 영문 기사 처리 | 요약만 국문으로 제공할지 원문 그대로 노출할지 미정 | Phase 1 완료 후 |
+| n8n 유료 환경 이관 | 이관 시점 및 Code 노드 구조 재설계 여부 | Phase 1 완료 후 |
+
+---
+
+## 6-1. 결정된 사항 (Resolved)
+
+| 항목 | 결정 내용 | 결정일 |
+|---|---|---|
+| UX 구조 | C안 채택 — 뉴스 피드와 커뮤니티 분리 운영, 기사 상세에서 "이 기사 토론 보기" 버튼으로 연결 | 2026-04-20 |
+| 중간 데이터 저장 | Google Sheets 생략, n8n → Supabase 직접 저장 | 2026-04-20 |
+| RSS 수집 방식 | HTTP Request 8개 + Set 노드 병렬 구조 채택 (현재 n8n 환경의 Code 노드 라이브러리 제약) | 2026-04-22 |
+| 중복 제거 시점 | Claude API 호출 전에 수행 (API 비용 절감) | 2026-04-22 |
+| 중복 판단 기준 | 제목 유사도 50% (너무 엄격하면 다른 주제도 제거, 느슨하면 중복 통과) | 2026-04-22 |
+| Claude 응답 처리 | HTTP Request가 원본 데이터를 덮어쓰므로 Code 노드에서 `$('XML 파싱').all()[i]` 역참조 방식으로 병합 | 2026-04-22 |
 
 ---
 
 ## 7. 진행 체크리스트 요약
 
 ### Phase 1 체크리스트
-- [ ] n8n Anthropic API Credential 등록
-- [ ] n8n Google Sheets / Supabase Credential 등록 (Supabase 사용 시)
-- [ ] Supabase 프로젝트 생성 및 테이블 생성
-- [ ] n8n 워크플로우 구성 및 테스트 실행
-- [ ] 매일 자동 실행 스케줄 활성화
+- [x] n8n Anthropic API 연동 (Headers 직접 입력, 추후 Credential 전환 검토)
+- [x] Supabase 프로젝트 생성 및 테이블 생성
+- [x] Supabase Credential 등록
+- [x] n8n 워크플로우 구성 및 노드별 테스트 실행
+- [ ] 전체 워크플로우 Test 실행 성공
+- [ ] 매일 자동 실행 스케줄 Active 전환
 
 ### Phase 3 체크리스트
 - [ ] Lovable 프로젝트 생성
@@ -297,6 +313,14 @@ const { data } = await supabase
 - [ ] 기사 목록 페이지 구현
 - [ ] 기사 상세 페이지 구현
 - [ ] 배포 및 도메인 연결
+
+---
+
+## 8. 연관 문서
+
+- [n8n 워크플로우 아키텍처](./n8n-architecture.md)
+- [Supabase DB 스키마](../supabase/schema.sql)
+- [n8n 워크플로우 JSON](../n8n/workflows/news-pipeline.json)
 
 ---
 
